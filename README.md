@@ -1,21 +1,48 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# fluxBoard ⌨️ 🤖
 
-# Run and deploy your AI Studio app
+An advanced, privacy-focused Android keyboard featuring real-time AI capabilities powered by **Nvidia Llama 3.3-70b-instruct**, smooth Gboard-style typing mechanics, and a categorized emoji panel.
 
-This contains everything you need to run your app locally.
+## Features ✨
 
-View your app in AI Studio: https://ai.studio/apps/245936b5-dc26-4146-b377-648046c577c1
+- **Nvidia Llama 3.3 Integration:** Rephrase, grammar check, summarize, or translate your text in real time with zero spelling or prediction mistakes.
+- **Smart Prediction & Contractions:** Custom bigram prediction engine with automated contraction correction (e.g., `dont` -> `don't`).
+- **Gboard-Style Keyboard Shortcuts:** Long-press spacebar to switch keyboards instantly, and long-press letter keys to input superscript numbers.
+- **Smooth Categorized Emojis:** Hardware-accelerated scrolling emoji panel sorted by Smileys, Gestures, Hearts, Food, Travel, and Objects.
+- **Trial & Key System:** 14-day free trial on the default Nvidia Llama service, with unlimited usage when adding your personal API key in settings.
+- **Fully Open-Source & Private:** No tracking, telemetry, or server-side keystore caching.
 
-## Run Locally
+---
 
-**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
+## Getting Started (Developers) 🛠️
 
+### Prerequisites
 
-1. Open Android Studio
-2. Select **Open** and choose the directory containing this project
-3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
+- [Android Studio](https://developer.android.com/studio) (Jellyfish or newer)
+- Android SDK 24+
+
+### Setup Instructions
+
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/tharikhe/fluxboard-landing.git
+   ```
+
+2. **Configure API Keys:**
+   Create a `.env` file at the root of the project (this is excluded from Git via `.gitignore` to protect your credentials):
+   ```env
+   DEFAULT_API_KEY=your_nvidia_llama_api_key
+   ```
+
+3. **Import to Android Studio:**
+   - Open Android Studio.
+   - Choose **Open** and select the root directory of this project.
+   - Let Gradle sync and resolve dependencies.
+
+4. **Run the Project:**
+   Build and run the project on an emulator or physical Android device.
+
+---
+
+## License 📄
+
+This project is open-source and licensed under the [MIT License](LICENSE).

@@ -246,7 +246,8 @@ body {
 }
 
 .keyboard-mockup {
-    width: 380px;
+    width: 100%;
+    max-width: 380px;
     background: #18181b;
     border: 2px solid var(--border-color);
     border-radius: 20px;
@@ -479,6 +480,7 @@ footer {
         grid-template-columns: 1fr;
         text-align: center;
         gap: 40px;
+        margin: 40px auto 80px;
     }
     
     .hero-content {
@@ -487,5 +489,81 @@ footer {
     
     .hero-content h1 {
         font-size: 40px;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar {
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px 4%;
+    }
+    
+    .hero {
+        margin: 20px auto 60px;
+        padding: 0 4%;
+        gap: 30px;
+    }
+    
+    .hero-content h1 {
+        font-size: 32px;
+        line-height: 1.2;
+    }
+    
+    .hero-subtitle {
+        font-size: 15px;
+        margin-bottom: 24px;
+    }
+    
+    .cta-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+    }
+    
+    .btn-primary, .btn-secondary {
+        width: 100%;
+        max-width: 320px;
+        justify-content: center;
+        padding: 14px 20px;
+        font-size: 15px;
+    }
+    
+    .keyboard-mockup {
+        max-width: 100%;
+        padding: 8px;
+    }
+    
+    .key {
+        height: 34px;
+        font-size: 11px;
+    }
+    
+    .key sup {
+        font-size: 7px;
+        top: 1px;
+        right: 2px;
+    }
+    
+    .features-section, .setup-section {
+        padding: 40px 4%;
+    }
+    
+    .section-title {
+        font-size: 28px;
+        margin-bottom: 30px;
+    }
+    
+    .feature-card {
+        padding: 24px 20px;
+    }
+    
+    .setup-step {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+        padding: 20px;
     }
 }
