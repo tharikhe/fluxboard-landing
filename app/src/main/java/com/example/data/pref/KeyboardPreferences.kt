@@ -26,7 +26,14 @@ class KeyboardPreferences(context: Context) {
         private const val KEY_API_PROVIDER = "api_provider"
         private const val KEY_CUSTOM_BASE_URL = "custom_base_url"
         private const val KEY_CUSTOM_MODEL = "custom_model"
-        private const val MAX_FREE_TRIALS = 15
+        private const val KEY_FIRST_LAUNCH_TIME = "first_launch_time"
+    }
+
+    init {
+        // Set first launch time if not initialized
+        if (prefs.getLong(KEY_FIRST_LAUNCH_TIME, 0L) == 0L) {
+            prefs.edit().putLong(KEY_FIRST_LAUNCH_TIME, System.currentTimeMillis()).apply()
+        }
     }
 
     enum class KeyboardTheme {
@@ -34,13 +41,26 @@ class KeyboardPreferences(context: Context) {
     }
 
     enum class ApiProvider {
-        DEEPSEEK, OPENAI_COMPATIBLE, NVIDIA_MISTRAL
+        DEEPSEEK, OPENAI_COMPATIBLE
     }
+
+    var firstLaunchTime: Long
+        get() = prefs.getLong(KEY_FIRST_LAUNCH_TIME, 0L)
+        set(value) = prefs.edit().putLong(KEY_FIRST_LAUNCH_TIME, value).apply()
+
+    val daysRemaining: Int
+        get() {
+            val start = firstLaunchTime
+            if (start == 0L) return 14
+            val elapsedMs = System.currentTimeMillis() - start
+            val elapsedDays = elapsedMs / (1000 * 60 * 60 * 24)
+            return (14 - elapsedDays).toInt().coerceIn(0..14)
+        }
 
     var apiProvider: ApiProvider
         get() {
-            val name = prefs.getString(KEY_API_PROVIDER, ApiProvider.NVIDIA_MISTRAL.name) ?: ApiProvider.NVIDIA_MISTRAL.name
-            return try { ApiProvider.valueOf(name) } catch (e: Exception) { ApiProvider.NVIDIA_MISTRAL }
+            val name = prefs.getString(KEY_API_PROVIDER, ApiProvider.DEEPSEEK.name) ?: ApiProvider.DEEPSEEK.name
+            return try { ApiProvider.valueOf(name) } catch (e: Exception) { ApiProvider.DEEPSEEK }
         }
         set(value) {
             prefs.edit().putString(KEY_API_PROVIDER, value.name).apply()
@@ -117,22 +137,15 @@ class KeyboardPreferences(context: Context) {
         set(value) = prefs.edit().putInt(KEY_FREE_TRIAL_COUNT, value).apply()
 
     val trialsLeft: Int
-        get() = (MAX_FREE_TRIALS - freeTrialCount).coerceAtLeast(0)
+        get() = daysRemaining
 
     fun hasSearchTokensLeft(): Boolean {
         if (isPremiumUser) return true
         if (usePersonalKey && deepSeekApiKey.isNotBlank()) return true
-        return freeTrialCount < MAX_FREE_TRIALS
+        return daysRemaining > 0
     }
 
     fun consumeSearchToken(): Boolean {
-        if (isPremiumUser) return true
-        if (usePersonalKey && deepSeekApiKey.isNotBlank()) return true
-        val current = freeTrialCount
-        if (current < MAX_FREE_TRIALS) {
-            freeTrialCount = current + 1
-            return true
-        }
-        return false
+        return hasSearchTokensLeft()
     }
 }

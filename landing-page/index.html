@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>fluxBoard | The Smart AI-Powered Keyboard</title>
+    <meta name="description" content="Download fluxBoard: A Gboard-style keyboard with real-time AI suggestions, grammar correction, instant translation, and intuitive long-press controls.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Stars Background Decor -->
+    <div class="stars-container"></div>
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+
+    <!-- Navigation -->
+    <header class="navbar">
+        <div class="logo">
+            <span class="logo-accent">flux</span>Board
+        </div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#setup">Setup Guide</a>
+            <a href="https://github.com" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <main class="hero">
+        <div class="hero-content">
+            <div class="badge"><span class="badge-dot"></span> Version 1.0.0 (Beta)</div>
+            <h1>Elevate Your Typing With <span class="text-gradient">Real-Time AI</span></h1>
+            <p class="hero-subtitle">
+                A premium, privacy-centric keyboard combining smooth Gboard-style mechanics, smart bigram predictions, and seamless Nvidia Llama 3.3 suggestions.
+            </p>
+            
+            <div class="cta-container">
+                <a href="app-release.apk" download class="btn-primary">
+                    <i class="fas fa-download"></i> Download APK <span class="file-size">(8.6 MB)</span>
+                </a>
+                <a href="#setup" class="btn-secondary">
+                    How to Install <i class="fas fa-arrow-down"></i>
+                </a>
+            </div>
+
+            <div class="security-note">
+                <i class="fas fa-shield-alt"></i> 100% Secure, Open-Source & Private
+            </div>
+        </div>
+        
+        <!-- Interactive Preview -->
+        <div class="preview-container">
+            <div class="keyboard-mockup">
+                <div class="toolbar">
+                    <div class="toolbar-item active"><i class="fas fa-magic"></i> Rephrase</div>
+                    <div class="toolbar-item"><i class="fas fa-language"></i> Translate</div>
+                    <div class="toolbar-item"><i class="fas fa-check-circle"></i> Grammar</div>
+                </div>
+                <div class="suggestion-strip">
+                    <div class="suggestion-slot">I'm</div>
+                    <div class="suggestion-slot middle-active">fluxBoard</div>
+                    <div class="suggestion-slot">awesome</div>
+                </div>
+                <div class="keyboard-grid">
+                    <div class="key-row">
+                        <span class="key">q<sup>1</sup></span>
+                        <span class="key">w<sup>2</sup></span>
+                        <span class="key">e<sup>3</sup></span>
+                        <span class="key">r<sup>4</sup></span>
+                        <span class="key">t<sup>5</sup></span>
+                        <span class="key">y<sup>6</sup></span>
+                        <span class="key">u<sup>7</sup></span>
+                        <span class="key">i<sup>8</sup></span>
+                        <span class="key">o<sup>9</sup></span>
+                        <span class="key">p<sup>0</sup></span>
+                    </div>
+                    <div class="key-row row-2">
+                        <span class="key">a</span>
+                        <span class="key">s</span>
+                        <span class="key">d</span>
+                        <span class="key">f</span>
+                        <span class="key">g</span>
+                        <span class="key">h</span>
+                        <span class="key">j</span>
+                        <span class="key">k</span>
+                        <span class="key">l</span>
+                    </div>
+                    <div class="key-row">
+                        <span class="key special"><i class="fas fa-arrow-up"></i></span>
+                        <span class="key">z</span>
+                        <span class="key">x</span>
+                        <span class="key">c</span>
+                        <span class="key">v</span>
+                        <span class="key">b</span>
+                        <span class="key">n</span>
+                        <span class="key">m</span>
+                        <span class="key special"><i class="fas fa-backspace"></i></span>
+                    </div>
+                    <div class="key-row">
+                        <span class="key special">?123</span>
+                        <span class="key special"><i class="far fa-laugh"></i></span>
+                        <span class="key">,</span>
+                        <span class="key space">SPACE</span>
+                        <span class="key">.</span>
+                        <span class="key special action"><i class="fas fa-level-down-alt"></i></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+        <h2 class="section-title">Why Choose <span class="text-gradient">fluxBoard</span>?</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-brain"></i></div>
+                <h3>Llama 3.3 Intelligence</h3>
+                <p>Rewrite, grammar-correct, summarize, or translate your text dynamically in real time without exiting any chat application.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-keyboard"></i></div>
+                <h3>Predictive Auto-Suggest</h3>
+                <p>Gboard-style context-aware suggestions, smart contraction correction (e.g., dont to don't), and clean space-aligned punctuation inputs.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-fingerprint"></i></div>
+                <h3>Long-Press Shortcut Keys</h3>
+                <p>Long-press numbers on the top row to type without switching menus, or long-press spacebar to switch keyboards instantly.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="far fa-smile-wink"></i></div>
+                <h3>Smooth Emoji Board</h3>
+                <p>Beautiful, category-sorted layout (Smileys, Gestures, Hearts) that lets you scroll through hundreds of emojis instantly and smoothly.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Setup Guide Section -->
+    <section id="setup" class="setup-section">
+        <h2 class="section-title">How To <span class="text-gradient">Install & Setup</span></h2>
+        
+        <div class="setup-steps">
+            <div class="setup-step">
+                <div class="step-num">1</div>
+                <div class="step-content">
+                    <h3>Download & Open the APK</h3>
+                    <p>Tap the download button above on your Android device to download <code>app-release.apk</code>. Open it to begin installation.</p>
+                </div>
+            </div>
+            
+            <div class="setup-step">
+                <div class="step-num">2</div>
+                <div class="step-content">
+                    <h3>Allow Installation from Unknown Sources</h3>
+                    <p>If prompted by your browser or system, toggle on <strong>"Allow installation from this source"</strong>. fluxBoard is secure and requires no special system permissions.</p>
+                </div>
+            </div>
+
+            <div class="setup-step">
+                <div class="step-num">3</div>
+                <div class="step-content">
+                    <h3>Follow the Interactive Guide</h3>
+                    <p>Launch the fluxBoard app. Tap the onscreen buttons to easily <strong>Enable fluxBoard</strong> in settings and select it as your <strong>Default Input Method</strong>.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 fluxBoard. Built for modern Android productivity. Free & open source.</p>
+    </footer>
+
+</body>
+</html>

@@ -38,6 +38,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.example.R
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +55,9 @@ fun SettingsScreen(
     // 1. Live Keyboard Activation Detection Checkers
     var isEnabled by remember { mutableStateOf(false) }
     var isSelected by remember { mutableStateOf(false) }
+    
+    // Track if setup wizard should be skipped / overridden to settings
+    var forceShowSettings by rememberSaveable { mutableStateOf(false) }
 
     // Read current settings
     var activeTheme by remember { mutableStateOf(preferences.selectedTheme) }
@@ -95,12 +102,43 @@ fun SettingsScreen(
         reloadActivationState()
     }
 
-    // Refresh layout state
-    DisposableEffect(Unit) {
-        onDispose { }
+    // Lifecycle observer to reload activation state when returning to the app
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                reloadActivationState()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
-    Scaffold(
+    val showSetup = !(isEnabled && isSelected) && !forceShowSettings
+
+    if (showSetup) {
+        SetupGuideScreen(
+            isEnabled = isEnabled,
+            isSelected = isSelected,
+            onEnableClick = {
+                try {
+                    context.startActivity(Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS))
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            },
+            onSelectClick = {
+                val im = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                im?.showInputMethodPicker()
+            },
+            onSkipClick = {
+                forceShowSettings = true
+            }
+        )
+    } else {
+        Scaffold(
         topBar = {
             TopAppBar(
                 title = {
@@ -178,86 +216,90 @@ fun SettingsScreen(
             }
 
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isEnabled && isSelected) {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-                        } else {
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
-                        }
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                if (isEnabled && isSelected) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = if (isEnabled && isSelected) Icons.Default.CheckCircle else Icons.Default.Warning,
+                                imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = if (isEnabled && isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = if (isEnabled && isSelected) "fluxBoard is Active!" else "Setup Required!",
+                                    text = "fluxBoard is Active",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = if (isEnabled && isSelected) {
-                                        "Fully active writing companion. Open any app to start typing with fluxBoard AI."
-                                    } else {
-                                        "Complete these two clicks to enable writing predictions and smart rephrasers."
-                                    },
+                                    text = "Fully active writing companion. Open any app to start typing.",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-
-                        if (!isEnabled || !isSelected) {
-                            Spacer(modifier = Modifier.height(14.dp))
+                    }
+                } else {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                            .clickable { forceShowSettings = false },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (!isEnabled) {
-                                    Button(
-                                        onClick = {
-                                            try {
-                                                context.startActivity(Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS))
-                                            } catch (e: Exception) {
-                                                e.printStackTrace()
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("1. Enable Keyboard", fontSize = 12.sp)
-                                    }
-                                } else if (!isSelected) {
-                                    Button(
-                                        onClick = {
-                                            val im = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-                                            im?.showInputMethodPicker()
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("2. Switch/Select IME", fontSize = 12.sp)
-                                    }
-                                }
-
-                                Button(
-                                    onClick = { reloadActivationState() },
-                                    colors = ButtonDefaults.filledTonalButtonColors(),
-                                    modifier = Modifier.width(80.dp)
-                                ) {
-                                    Icon(Icons.Default.Refresh, contentDescription = "Check", modifier = Modifier.size(16.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = "Setup Incomplete",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Text(
+                                        text = "Tap to open the interactive setup guide.",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                 }
@@ -295,9 +337,9 @@ fun SettingsScreen(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp
                                 )
-                                Badge(containerColor = if (isPremium) Color(0xFF4CAF50) else Color(0xFFFF9800)) {
+                                Badge(containerColor = if (usePersonalKey) Color(0xFF4CAF50) else if (isPremium) Color(0xFF4CAF50) else Color(0xFFFF9800)) {
                                     Text(
-                                        text = if (isPremium) "ACTIVE" else "STANDARD TRIAL",
+                                        text = if (usePersonalKey) "UNLIMITED" else if (isPremium) "ACTIVE" else "STANDARD TRIAL",
                                         color = Color.White,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
@@ -305,10 +347,12 @@ fun SettingsScreen(
                             }
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = if (isPremium) {
+                                text = if (usePersonalKey) {
+                                    "Using custom API credentials. Generations are completely free and unlimited."
+                                } else if (isPremium) {
                                     "Unlimited writing translations, tone modifications, message expansions, and autocomplete capabilities."
                                 } else {
-                                    "Unlock unlimited DeepSeek API model requests, zero-latency rewriting filters, and priority performance optimization. ($trialsLeft free trial requests remaining)"
+                                    "Unlock unlimited Llama 3.3 API model requests, zero-latency rewriting filters, and priority performance optimization. ($trialsLeft days trial remaining)"
                                 },
                                 color = Color.White.copy(alpha = 0.85f),
                                 fontSize = 12.sp
@@ -331,6 +375,7 @@ fun SettingsScreen(
                                         preferences.isPremiumUser = false
                                         isPremium = false
                                         preferences.freeTrialCount = 0
+                                        preferences.firstLaunchTime = System.currentTimeMillis()
                                         trialsLeft = preferences.trialsLeft
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.2f)),
@@ -464,20 +509,6 @@ fun SettingsScreen(
                                         .horizontalScroll(rememberScrollState())
                                 ) {
                                     ElevatedFilterChip(
-                                        selected = apiProvider == KeyboardPreferences.ApiProvider.NVIDIA_MISTRAL,
-                                        onClick = {
-                                            preferences.apiProvider = KeyboardPreferences.ApiProvider.NVIDIA_MISTRAL
-                                            apiProvider = KeyboardPreferences.ApiProvider.NVIDIA_MISTRAL
-                                            preferences.customBaseUrl = "https://integrate.api.nvidia.com/v1/"
-                                            customBaseUrl = "https://integrate.api.nvidia.com/v1/"
-                                            preferences.customModel = "mistralai/mistral-medium-3.5-128b"
-                                            customModel = "mistralai/mistral-medium-3.5-128b"
-                                            preferences.deepSeekApiKey = "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"
-                                            personalApiKey = "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"
-                                        },
-                                        label = { Text("Nvidia Mistral", fontSize = 12.sp) }
-                                    )
-                                    ElevatedFilterChip(
                                         selected = apiProvider == KeyboardPreferences.ApiProvider.DEEPSEEK,
                                         onClick = {
                                             preferences.apiProvider = KeyboardPreferences.ApiProvider.DEEPSEEK
@@ -494,11 +525,11 @@ fun SettingsScreen(
                                         onClick = {
                                             preferences.apiProvider = KeyboardPreferences.ApiProvider.OPENAI_COMPATIBLE
                                             apiProvider = KeyboardPreferences.ApiProvider.OPENAI_COMPATIBLE
-                                            if (customBaseUrl == "https://api.deepseek.com/" || customBaseUrl == "https://integrate.api.nvidia.com/v1/") {
+                                            if (customBaseUrl == "https://api.deepseek.com/") {
                                                 preferences.customBaseUrl = "https://api.openai.com/v1/"
                                                 customBaseUrl = "https://api.openai.com/v1/"
                                             }
-                                            if (customModel == "deepseek-chat" || customModel == "mistralai/mistral-medium-3.5-128b") {
+                                            if (customModel == "deepseek-chat") {
                                                 preferences.customModel = "gpt-4o-mini"
                                                 customModel = "gpt-4o-mini"
                                             }
@@ -749,6 +780,7 @@ fun SettingsScreen(
             }
         }
     }
+}
 }
 
 @Composable

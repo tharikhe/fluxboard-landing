@@ -10,6 +10,7 @@ import android.os.Vibrator
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -121,6 +122,52 @@ class AIKeyboardService : InputMethodService(),
 
     var currentWord by mutableStateOf("")
     val suggestions = mutableStateListOf<String>("I", "The", "Hello", "How", "What", "Good")
+
+    private val nextWordPredictions = mapOf(
+        "how" to listOf("are", "do", "about", "to", "is", "can", "much", "many"),
+        "thank" to listOf("you", "for", "your", "s"),
+        "thanks" to listOf("for", "a", "to", "anyway", "again"),
+        "good" to listOf("morning", "afternoon", "evening", "night", "luck", "idea", "job", "to"),
+        "are" to listOf("you", "they", "we", "there", "the", "not", "doing"),
+        "what" to listOf("are", "is", "about", "do", "you", "if", "time", "did"),
+        "i" to listOf("am", "have", "will", "was", "would", "want", "think", "need", "can", "know", "like", "feel", "love"),
+        "happy" to listOf("birthday", "new", "anniversary", "to", "hour", "for"),
+        "please" to listOf("let", "find", "see", "help", "do", "reply", "send", "call"),
+        "would" to listOf("like", "be", "you", "have", "love", "prefer"),
+        "let" to listOf("me", "us", "go", "know", "them"),
+        "nice" to listOf("to", "meeting", "work", "day", "shot"),
+        "look" to listOf("forward", "at", "for", "like", "up", "into"),
+        "am" to listOf("writing", "interested", "happy", "sorry", "looking", "doing", "fine", "ready", "going", "sure"),
+        "can" to listOf("you", "i", "we", "be", "help", "do", "get", "go", "hear"),
+        "could" to listOf("you", "we", "i", "be", "please", "have"),
+        "will" to listOf("be", "do", "go", "get", "help", "call", "send", "let", "meet"),
+        "did" to listOf("you", "not", "it", "they", "we", "she", "he"),
+        "do" to listOf("you", "not", "it", "we", "they", "have", "know", "want"),
+        "does" to listOf("it", "not", "he", "she", "that", "this", "anyone"),
+        "go" to listOf("to", "home", "out", "on", "through", "with", "there", "back"),
+        "going" to listOf("to", "home", "on", "through", "out", "there", "well", "fine"),
+        "want" to listOf("to", "you", "it", "more", "a", "some"),
+        "like" to listOf("to", "it", "that", "this", "you", "the", "a"),
+        "love" to listOf("you", "it", "to", "the", "this"),
+        "had" to listOf("a", "been", "to", "no", "some", "enough"),
+        "has" to listOf("been", "a", "to", "no", "some"),
+        "have" to listOf("a", "been", "to", "no", "some", "any", "the", "received", "heard"),
+        "is" to listOf("the", "a", "not", "it", "this", "that", "there", "good", "very", "he", "she", "done"),
+        "was" to listOf("the", "a", "not", "it", "this", "that", "there", "good", "very", "he", "she", "done"),
+        "hope" to listOf("you", "this", "all", "to"),
+        "sorry" to listOf("for", "to", "about"),
+        "about" to listOf("the", "this", "that", "it", "you", "to", "our", "your", "my"),
+        "this" to listOf("is", "was", "email", "message", "one", "week", "year", "time"),
+        "that" to listOf("is", "was", "would", "you", "it", "we", "they", "he", "she"),
+        "at" to listOf("the", "home", "work", "school", "least", "once", "first"),
+        "for" to listOf("the", "your", "our", "you", "me", "this", "that", "help"),
+        "in" to listOf("the", "our", "your", "my", "this", "that", "touch", "front", "order"),
+        "on" to listOf("the", "my", "your", "our", "this", "that", "time", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"),
+        "with" to listOf("you", "me", "us", "him", "her", "them", "the", "our", "your", "my"),
+        "by" to listOf("the", "our", "your", "my", "this", "that", "doing"),
+        "from" to listOf("the", "our", "your", "my", "this", "that", "you", "me", "us"),
+        "to" to listOf("the", "be", "do", "go", "get", "see", "meet", "hear", "help", "know", "my", "your", "our", "you", "me", "us")
+    )
 
     private val commonWords = listOf(
         "the", "be", "to", "of", "and", "a", "in", "that", "have", "I",
@@ -239,24 +286,157 @@ class AIKeyboardService : InputMethodService(),
 
     fun updateSuggestions() {
         suggestions.clear()
-        if (currentWord.isBlank()) {
-            suggestions.addAll(listOf("I", "The", "Hello", "How", "What", "Good"))
+        
+        val ic = currentInputConnection
+        val beforeText = ic?.getTextBeforeCursor(60, 0)?.toString() ?: ""
+        
+        // Find the word immediately before the one being typed (if any)
+        val words = beforeText.trim().split(Regex("\\s+"))
+        
+        // The last word before the cursor is the context. 
+        // If currentWord is NOT empty, the context is the word *before* currentWord.
+        // If currentWord IS empty, the context is the very last word of words.
+        val contextWord = if (currentWord.isNotEmpty()) {
+            if (words.size >= 2) words[words.size - 2].lowercase().replace(Regex("[^a-zA-Z]"), "") else ""
         } else {
-            val prefix = currentWord.lowercase()
-            val matches = commonWords
-                .filter { it.startsWith(prefix, ignoreCase = true) }
-                .distinctBy { it.lowercase() }
-                .take(3)
-            suggestions.addAll(matches.map { word ->
-                word.replaceFirstChar { char ->
-                    if (currentWord.firstOrNull()?.isUpperCase() == true) char.uppercaseChar() else char.lowercaseChar()
+            if (words.isNotEmpty()) words.last().lowercase().replace(Regex("[^a-zA-Z]"), "") else ""
+        }
+        
+        val candidates = mutableListOf<String>()
+        
+        val contractionAutocorrect = mapOf(
+            "dont" to "don't",
+            "cant" to "can't",
+            "im" to "I'm",
+            "its" to "it's",
+            "youre" to "you're",
+            "theyre" to "they're",
+            "wont" to "won't",
+            "wouldnt" to "wouldn't",
+            "shouldnt" to "shouldn't",
+            "couldnt" to "couldn't",
+            "isnt" to "isn't",
+            "arent" to "aren't",
+            "wasnt" to "wasn't",
+            "werent" to "weren't",
+            "hes" to "he's",
+            "shes" to "she's",
+            "thats" to "that's",
+            "theres" to "there's",
+            "whats" to "what's",
+            "lets" to "let's",
+            "didnt" to "didn't",
+            "havent" to "haven't",
+            "hasnt" to "hasn't",
+            "hadnt" to "hadn't",
+            "couldve" to "could've",
+            "wouldve" to "would've",
+            "shouldve" to "should've",
+            "doesnt" to "doesn't"
+        )
+
+        if (currentWord.isEmpty()) {
+            // Case 1: Cursor is at a word boundary
+            // Predict next words based on context
+            val predicted = mutableListOf<String>()
+            if (contextWord.isNotEmpty() && nextWordPredictions.containsKey(contextWord)) {
+                predicted.addAll(nextWordPredictions[contextWord] ?: emptyList())
+            }
+            // Fallbacks for predictions
+            val generalFallbacks = listOf("I", "the", "Hello", "How", "Thanks", "What", "Good", "please", "sorry", "would")
+            for (word in generalFallbacks) {
+                if (predicted.size >= 3) break
+                if (!predicted.contains(word)) {
+                    predicted.add(word)
                 }
-            })
+            }
             
-            if (suggestions.isEmpty()) {
-                suggestions.add(currentWord)
+            // Gboard suggestion layout when not typing:
+            // Left: ","
+            // Middle: main predicted next-word
+            // Right: "."
+            candidates.add(",")
+            if (predicted.isNotEmpty()) {
+                candidates.add(predicted[0])
+            } else {
+                candidates.add("I")
+            }
+            candidates.add(".")
+        } else {
+            // Case 2: User is actively typing a word
+            val prefix = currentWord.lowercase()
+            
+            val contraction = contractionAutocorrect[prefix]
+            if (contraction != null) {
+                // If the word matches a contraction, force it as autocorrect target (middle slot)
+                candidates.add(currentWord) // Left
+                candidates.add(contraction) // Middle
+                // Right: fill with general match
+                val generalMatches = commonWords.filter { it.startsWith(prefix, ignoreCase = true) }
+                val rightCandidate = generalMatches.firstOrNull { it.lowercase() != prefix }
+                if (rightCandidate != null) {
+                    candidates.add(rightCandidate)
+                }
+            } else {
+                // Prioritize context-aware bigram predictions matching the prefix
+                val contextMatches = if (contextWord.isNotEmpty() && nextWordPredictions.containsKey(contextWord)) {
+                    nextWordPredictions[contextWord] ?: emptyList()
+                } else {
+                    emptyList()
+                }
+                val matchingContextMatches = contextMatches.filter { it.startsWith(prefix, ignoreCase = true) }
+                val tempCandidates = mutableListOf<String>()
+                tempCandidates.addAll(matchingContextMatches)
+                
+                // Fill remaining candidate slots with general words starting with prefix
+                val generalMatches = commonWords.filter { it.startsWith(prefix, ignoreCase = true) }
+                for (match in generalMatches) {
+                    if (tempCandidates.size >= 5) break
+                    val normalizedMatch = match.replaceFirstChar { char ->
+                        if (currentWord.firstOrNull()?.isUpperCase() == true) char.uppercaseChar() else char.lowercaseChar()
+                    }
+                    if (!tempCandidates.contains(normalizedMatch)) {
+                        tempCandidates.add(normalizedMatch)
+                    }
+                }
+                
+                // Re-structure candidates:
+                // Left (index 0): raw typed word
+                // Middle (index 1): best candidate if available
+                // Right (index 2): second best candidate
+                val list = mutableListOf<String>()
+                list.add(currentWord)
+                
+                val bestCandidate = tempCandidates.firstOrNull { it.lowercase() != prefix }
+                if (bestCandidate != null) {
+                    list.add(bestCandidate)
+                }
+                
+                val secondCandidate = tempCandidates.firstOrNull { it.lowercase() != prefix && it != bestCandidate }
+                if (secondCandidate != null) {
+                    list.add(secondCandidate)
+                }
+                
+                candidates.clear()
+                candidates.addAll(list)
             }
         }
+        
+        // Take up to 3 final suggestions and format case matching the typing intent
+        val finalSuggestions = candidates
+            .distinctBy { it.lowercase() }
+            .take(3)
+            .map { word ->
+                if (word.firstOrNull()?.isUpperCase() == true || word == "," || word == ".") {
+                    word
+                } else if (currentWord.firstOrNull()?.isUpperCase() == true) {
+                    word.replaceFirstChar { it.uppercaseChar() }
+                } else {
+                    word.lowercase()
+                }
+            }
+            
+        suggestions.addAll(finalSuggestions)
     }
 
     fun selectSuggestion(word: String) {
@@ -267,7 +447,16 @@ class AIKeyboardService : InputMethodService(),
             ic.deleteSurroundingText(currentWord.length, 0)
         }
         
-        ic.commitText("$word ", 1)
+        // If it's punctuation, clean up preceding space
+        if (word in listOf(".", ",", "?", "!", "\"", ";", ":")) {
+            val before = ic.getTextBeforeCursor(1, 0)?.toString() ?: ""
+            if (before == " ") {
+                ic.deleteSurroundingText(1, 0)
+            }
+            ic.commitText("$word ", 1)
+        } else {
+            ic.commitText("$word ", 1)
+        }
         currentWord = ""
         updateSuggestions()
     }
@@ -287,7 +476,13 @@ class AIKeyboardService : InputMethodService(),
                 updateSuggestions()
             }
             "SPACE" -> {
-                ic.commitText(" ", 1)
+                val bestSuggestion = if (suggestions.size >= 2) suggestions[1] else suggestions.firstOrNull()
+                if (currentWord.isNotEmpty() && bestSuggestion != null && bestSuggestion.lowercase() != currentWord.lowercase()) {
+                    ic.deleteSurroundingText(currentWord.length, 0)
+                    ic.commitText("$bestSuggestion ", 1)
+                } else {
+                    ic.commitText(" ", 1)
+                }
                 currentWord = ""
                 updateSuggestions()
             }
@@ -430,5 +625,11 @@ class AIKeyboardService : InputMethodService(),
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(intent)
+    }
+
+    fun showKeyboardSwitcher() {
+        triggerHaptic()
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        imm?.showInputMethodPicker()
     }
 }

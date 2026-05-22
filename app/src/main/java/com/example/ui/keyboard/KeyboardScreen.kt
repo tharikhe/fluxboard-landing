@@ -13,6 +13,10 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.grid.items
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.BorderStroke
@@ -102,73 +106,76 @@ fun KeyboardScreen(
             .padding(bottom = 4.dp)
     ) {
         // 1. DYNAMIC TOOLBAR AREA (AI writing capabilities & clipboard)
-        AIKeyboardToolbar(
-            toolbarMode = toolbarMode,
-            onChangeMode = { toolbarMode = it },
-            selectedText = selectedTextForAI,
-            onSelectedTextChange = { selectedTextForAI = it },
-            aiResult = aiResultText,
-            isLoading = isAiLoading,
-            colors = colors,
-            errorMessage = apiErrorMessage,
-            clipboardItems = clipboardHistory,
-            aiHistoryList = aiHistoryList,
-            onOpenSettings = { service.openSettingsApp() },
-            onExecuteAction = { type, contextStr ->
-                coroutineScope.launch {
-                    isAiLoading = true
-                    apiErrorMessage = ""
-                    val result = repository.executeAiAction(type, selectedTextForAI, contextStr)
-                    isAiLoading = false
-                    result.fold(
-                        onSuccess = { rewrittenText ->
-                            aiResultText = rewrittenText
-                            // Log history to DB
-                            withContext(Dispatchers.IO) {
-                                dbDao.insertAIHistory(
-                                    AIHistory(
-                                        originalText = selectedTextForAI,
-                                        modifiedText = rewrittenText,
-                                        featureType = type,
-                                        extraInfo = contextStr
+        if (currentMode != KeyboardMode.EMOJI) {
+            AIKeyboardToolbar(
+                toolbarMode = toolbarMode,
+                onChangeMode = { toolbarMode = it },
+                selectedText = selectedTextForAI,
+                onSelectedTextChange = { selectedTextForAI = it },
+                aiResult = aiResultText,
+                isLoading = isAiLoading,
+                colors = colors,
+                errorMessage = apiErrorMessage,
+                clipboardItems = clipboardHistory,
+                aiHistoryList = aiHistoryList,
+                onOpenSettings = { service.openSettingsApp() },
+                onExecuteAction = { type, contextStr ->
+                    coroutineScope.launch {
+                        isAiLoading = true
+                        apiErrorMessage = ""
+                        val result = repository.executeAiAction(type, selectedTextForAI, contextStr)
+                        isAiLoading = false
+                        result.fold(
+                            onSuccess = { rewrittenText ->
+                                aiResultText = rewrittenText
+                                // Log history to DB
+                                withContext(Dispatchers.IO) {
+                                    dbDao.insertAIHistory(
+                                        AIHistory(
+                                            originalText = selectedTextForAI,
+                                            modifiedText = rewrittenText,
+                                            featureType = type,
+                                            extraInfo = contextStr
+                                        )
                                     )
-                                )
+                                }
+                            },
+                            onFailure = { error ->
+                                apiErrorMessage = error.message ?: "An unknown AI error occurred."
                             }
-                        },
-                        onFailure = { error ->
-                            apiErrorMessage = error.message ?: "An unknown AI error occurred."
-                        }
-                    )
+                        )
+                    }
+                },
+                onInsertText = { textToInsert ->
+                    service.triggerHaptic()
+                    service.replaceText(textToInsert)
+                    toolbarMode = KeyboardToolbarMode.NORMAL
+                },
+                onDeleteClip = { clipId ->
+                    coroutineScope.launch(Dispatchers.IO) {
+                        dbDao.deleteClipboardItemById(clipId)
+                    }
+                },
+                onClearHistory = {
+                    coroutineScope.launch(Dispatchers.IO) {
+                        dbDao.clearAIHistory()
+                    }
                 }
-            },
-            onInsertText = { textToInsert ->
-                service.triggerHaptic()
-                service.replaceText(textToInsert)
-                toolbarMode = KeyboardToolbarMode.NORMAL
-            },
-            onDeleteClip = { clipId ->
-                coroutineScope.launch(Dispatchers.IO) {
-                    dbDao.deleteClipboardItemById(clipId)
-                }
-            },
-            onClearHistory = {
-                coroutineScope.launch(Dispatchers.IO) {
-                    dbDao.clearAIHistory()
-                }
-            }
-        )
+            )
 
-        HorizontalDivider(color = colors.dividerColor, thickness = 0.3.dp)
+            HorizontalDivider(color = colors.dividerColor, thickness = 0.3.dp)
+        }
 
         // 2. SUGGESTION STRIP (NORMAL MODE ONLY)
         AnimatedVisibility(
-            visible = toolbarMode == KeyboardToolbarMode.NORMAL,
+            visible = toolbarMode == KeyboardToolbarMode.NORMAL && currentMode != KeyboardMode.EMOJI,
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut()
         ) {
             SuggestionStrip(
                 suggestions = service.suggestions,
                 colors = colors,
+                isTyping = service.currentWord.isNotEmpty(),
                 onSuggestionClick = { word ->
                     service.selectSuggestion(word)
                 }
@@ -214,6 +221,16 @@ fun KeyboardScreen(
                                     isShiftActive = false
                                 }
                             }
+                        },
+                        onKeyLongClick = { key ->
+                            if (key == "SPACE") {
+                                service.showKeyboardSwitcher()
+                            } else {
+                                val number = getLongPressChar(key)
+                                if (number != null) {
+                                    service.triggerKeyClick(number)
+                                }
+                            }
                         }
                     )
                 }
@@ -241,6 +258,11 @@ fun KeyboardScreen(
                                     }
                                 )
                             }
+                        },
+                        onKeyLongClick = { key ->
+                            if (key == "SPACE") {
+                                service.showKeyboardSwitcher()
+                            }
                         }
                     )
                 }
@@ -267,6 +289,11 @@ fun KeyboardScreen(
                                         }
                                     }
                                 )
+                            }
+                        },
+                        onKeyLongClick = { key ->
+                            if (key == "SPACE") {
+                                service.showKeyboardSwitcher()
                             }
                         }
                     )
@@ -773,6 +800,7 @@ fun SmartComposerPanel(
 fun SuggestionStrip(
     suggestions: List<String>,
     colors: KeyboardThemeColors,
+    isTyping: Boolean,
     onSuggestionClick: (String) -> Unit
 ) {
     Row(
@@ -790,11 +818,12 @@ fun SuggestionStrip(
                     .clickable { onSuggestionClick(keyword) },
                 contentAlignment = Alignment.Center
             ) {
+                val isAutocorrectTarget = isTyping && index == 1 && suggestions.size >= 2
                 Text(
                     text = keyword.trim(),
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = colors.keyTextColor,
+                    fontWeight = if (isAutocorrectTarget) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isAutocorrectTarget) colors.accentBg else colors.keyTextColor,
                     maxLines = 1,
                     fontFamily = FontFamily.SansSerif
                 )
@@ -914,7 +943,8 @@ fun KeyboardKeysGrid(
     isShift: Boolean,
     isCaps: Boolean,
     colors: KeyboardThemeColors,
-    onKeyClick: (String) -> Unit
+    onKeyClick: (String) -> Unit,
+    onKeyLongClick: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -962,7 +992,8 @@ fun KeyboardKeysGrid(
                             isActive = (originalKey == "SHIFT" && (isShift || isCaps)),
                             isCapsLock = (originalKey == "SHIFT" && isCaps),
                             colors = colors,
-                            onClick = { onKeyClick(originalKey) }
+                            onClick = { onKeyClick(originalKey) },
+                            onLongClick = { onKeyLongClick(originalKey) }
                         )
                     }
                 }
@@ -982,7 +1013,8 @@ fun KeyboardKeyButton(
     isActive: Boolean,
     isCapsLock: Boolean,
     colors: KeyboardThemeColors,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressedState by interactionSource.collectIsPressedAsState()
@@ -1014,23 +1046,38 @@ fun KeyboardKeyButton(
         else -> colors.keyTextColor
     }
 
+    val longPressHint = remember(originalKey) { getLongPressChar(originalKey) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .shadow(0.5.dp, shape)
             .clip(shape)
             .background(background)
-            .clickable(
+            .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = {
                     if (originalKey != "BACKSPACE") {
                         onClick()
                     }
-                }
+                },
+                onLongClick = onLongClick
             ),
         contentAlignment = Alignment.Center
     ) {
+        if (longPressHint != null) {
+            Text(
+                text = longPressHint,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.keyTextColor.copy(alpha = 0.45f),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 2.dp, end = 5.dp)
+            )
+        }
+
         when (originalKey) {
             "BACKSPACE" -> Icon(
                 imageVector = Icons.Default.Clear,
@@ -1080,6 +1127,22 @@ fun KeyboardKeyButton(
     }
 }
 
+private fun getLongPressChar(key: String): String? {
+    return when (key.lowercase()) {
+        "q" -> "1"
+        "w" -> "2"
+        "e" -> "3"
+        "r" -> "4"
+        "t" -> "5"
+        "y" -> "6"
+        "u" -> "7"
+        "i" -> "8"
+        "o" -> "9"
+        "p" -> "0"
+        else -> null
+    }
+}
+
 
 @Composable
 fun EmojiGrid(
@@ -1087,66 +1150,114 @@ fun EmojiGrid(
     onEmojiClick: (String) -> Unit,
     onBackClick: () -> Unit
 ) {
+    var selectedCategory by remember { mutableStateOf("Smileys") }
+    val emojis = KeyboardLayout.emojiCategories[selectedCategory] ?: emptyList()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp)
+            .height(240.dp)
             .background(colors.background)
-            .padding(horizontal = 4.dp, vertical = 4.dp)
     ) {
-        // Header
+        // Category bar & Back button
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .height(44.dp)
+                .background(colors.background)
+                .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "Emojis",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = colors.subtleTextColor,
-                fontFamily = FontFamily.SansSerif
-            )
+            // ABC back button
             Box(
                 modifier = Modifier
+                    .padding(end = 8.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(colors.specialKeyBg)
                     .clickable(onClick = onBackClick)
-                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Text("ABC", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = colors.keyTextColor)
+                Text(
+                    text = "ABC",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.keyTextColor,
+                    fontFamily = FontFamily.SansSerif
+                )
+            }
+
+            // Categories Row
+            LazyRow(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                KeyboardLayout.emojiCategories.keys.forEach { category ->
+                    val isSelected = selectedCategory == category
+                    val icon = when (category) {
+                        "Smileys" -> "😀"
+                        "Gestures" -> "👍"
+                        "Hearts" -> "❤️"
+                        "Food" -> "🍔"
+                        "Travel" -> "🚗"
+                        "Objects" -> "💻"
+                        else -> "😀"
+                    }
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) colors.accentBg.copy(alpha = 0.15f) else Color.Transparent)
+                                .clickable { selectedCategory = category }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = icon, fontSize = 16.sp)
+                                Text(
+                                    text = category,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) colors.accentBg else colors.keyTextColor
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        HorizontalDivider(color = colors.dividerColor, thickness = 0.5.dp)
 
-        // Emoji grid rows
-        val emojiRows = KeyboardLayout.popularEmojis.chunked(10)
-        Column(
+        // Smooth scrolling grid
+        val gridState = rememberLazyGridState()
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(8),
+            state = gridState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(4.dp),
+            contentPadding = PaddingValues(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            emojiRows.forEach { emojiRow ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+            items(emojis) { emoji ->
+                Box(
+                    modifier = Modifier
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onEmojiClick(emoji) },
+                      contentAlignment = Alignment.Center
                 ) {
-                    emojiRow.forEach { emoji ->
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onEmojiClick(emoji) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = emoji, fontSize = 24.sp)
-                        }
-                    }
-                    // Fill remaining slots if row is shorter
-                    repeat(10 - emojiRow.size) {
-                        Spacer(modifier = Modifier.size(42.dp))
-                    }
+                    Text(
+                        text = emoji,
+                        fontSize = 24.sp
+                    )
                 }
             }
         }
