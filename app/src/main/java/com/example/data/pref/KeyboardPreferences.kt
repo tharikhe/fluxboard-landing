@@ -34,13 +34,13 @@ class KeyboardPreferences(context: Context) {
     }
 
     enum class ApiProvider {
-        DEEPSEEK, OPENAI_COMPATIBLE
+        DEEPSEEK, OPENAI_COMPATIBLE, NVIDIA_MISTRAL
     }
 
     var apiProvider: ApiProvider
         get() {
-            val name = prefs.getString(KEY_API_PROVIDER, ApiProvider.DEEPSEEK.name) ?: ApiProvider.DEEPSEEK.name
-            return try { ApiProvider.valueOf(name) } catch (e: Exception) { ApiProvider.DEEPSEEK }
+            val name = prefs.getString(KEY_API_PROVIDER, ApiProvider.NVIDIA_MISTRAL.name) ?: ApiProvider.NVIDIA_MISTRAL.name
+            return try { ApiProvider.valueOf(name) } catch (e: Exception) { ApiProvider.NVIDIA_MISTRAL }
         }
         set(value) {
             prefs.edit().putString(KEY_API_PROVIDER, value.name).apply()

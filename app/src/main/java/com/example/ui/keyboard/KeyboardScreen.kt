@@ -9,9 +9,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
@@ -165,10 +167,10 @@ fun KeyboardScreen(
             exit = shrinkVertically() + fadeOut()
         ) {
             SuggestionStrip(
-                activeSelectionText = selectedTextForAI,
+                suggestions = service.suggestions,
                 colors = colors,
                 onSuggestionClick = { word ->
-                    service.triggerKeyClick(word)
+                    service.selectSuggestion(word)
                 }
             )
         }
@@ -769,22 +771,10 @@ fun SmartComposerPanel(
 // --- SUGGESTION STRIP (Gboard Style) ---
 @Composable
 fun SuggestionStrip(
-    activeSelectionText: String,
+    suggestions: List<String>,
     colors: KeyboardThemeColors,
     onSuggestionClick: (String) -> Unit
 ) {
-    val suggestions = remember(activeSelectionText) {
-        if (activeSelectionText.isBlank()) {
-            listOf("I", "The", "Hello")
-        } else {
-            listOf(
-                "$activeSelectionText ",
-                "${activeSelectionText}ly ",
-                "And $activeSelectionText "
-            )
-        }
-    }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -994,12 +984,28 @@ fun KeyboardKeyButton(
     colors: KeyboardThemeColors,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressedState by interactionSource.collectIsPressedAsState()
+
+    if (originalKey == "BACKSPACE") {
+        LaunchedEffect(isPressedState) {
+            if (isPressedState) {
+                onClick()
+                delay(400)
+                while (true) {
+                    onClick()
+                    delay(60)
+                }
+            }
+        }
+    }
+
     val shape = RoundedCornerShape(8.dp)
     val background = when {
-        isEnter -> colors.accentBg
+        isEnter -> if (isPressedState) colors.accentBg.copy(alpha = 0.85f) else colors.accentBg
         isActive -> colors.accentBg
-        isSpecial -> colors.specialKeyBg
-        else -> colors.keyBg
+        isSpecial -> if (isPressedState) colors.specialKeyBg.copy(alpha = 0.85f) else colors.specialKeyBg
+        else -> if (isPressedState) colors.keyBg.copy(alpha = 0.85f) else colors.keyBg
     }
 
     val textColor = when {
@@ -1014,7 +1020,15 @@ fun KeyboardKeyButton(
             .shadow(0.5.dp, shape)
             .clip(shape)
             .background(background)
-            .clickable(onClick = onClick),
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {
+                    if (originalKey != "BACKSPACE") {
+                        onClick()
+                    }
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
         when (originalKey) {

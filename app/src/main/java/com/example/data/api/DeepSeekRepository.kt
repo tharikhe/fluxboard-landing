@@ -19,7 +19,10 @@ class DeepSeekRepository(
         val targetUrl = if (preferences.usePersonalKey) {
             preferences.customBaseUrl
         } else {
-            "https://api.deepseek.com/"
+            when (preferences.apiProvider) {
+                KeyboardPreferences.ApiProvider.NVIDIA_MISTRAL -> "https://integrate.api.nvidia.com/v1/"
+                else -> "https://api.deepseek.com/"
+            }
         }
 
         if (dynamicApiService == null || currentUrl != targetUrl) {
@@ -31,11 +34,14 @@ class DeepSeekRepository(
 
     /**
      * Resolves the active API key. First checks if the user has enabled their
-     * personal key in options. Otherwise falls back to build-time BuildConfig.
+     * personal key in options. Otherwise falls back to provider defaults or BuildConfig.
      */
     private fun getApiKey(): String {
         if (preferences.usePersonalKey && preferences.deepSeekApiKey.isNotBlank()) {
             return preferences.deepSeekApiKey.trim()
+        }
+        if (preferences.apiProvider == KeyboardPreferences.ApiProvider.NVIDIA_MISTRAL) {
+            return "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"
         }
         // Fallback to build configuration (from secrets panel/.env)
         // Check if injected value is a placeholder
@@ -68,10 +74,22 @@ class DeepSeekRepository(
 
         try {
             val service = getApiService()
-            val requestModel = if (preferences.usePersonalKey) preferences.customModel else "deepseek-chat"
+            val requestModel = if (preferences.usePersonalKey) {
+                preferences.customModel
+            } else {
+                when (preferences.apiProvider) {
+                    KeyboardPreferences.ApiProvider.NVIDIA_MISTRAL -> "mistralai/mistral-medium-3.5-128b"
+                    else -> "deepseek-chat"
+                }
+            }
             val response = service.createChatCompletion(
                 authorizationHeader = "Bearer $apiKey",
-                request = DeepSeekChatRequest(model = requestModel, messages = messages)
+                request = DeepSeekChatRequest(
+                    model = requestModel,
+                    messages = messages,
+                    temperature = 0.7,
+                    maxTokens = 2048
+                )
             )
 
             val reply = response.choices?.firstOrNull()?.message?.content?.trim()

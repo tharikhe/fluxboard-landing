@@ -6,6 +6,8 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -421,8 +423,24 @@ fun SettingsScreen(
                                 
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState())
                                 ) {
+                                    ElevatedFilterChip(
+                                        selected = apiProvider == KeyboardPreferences.ApiProvider.NVIDIA_MISTRAL,
+                                        onClick = {
+                                            preferences.apiProvider = KeyboardPreferences.ApiProvider.NVIDIA_MISTRAL
+                                            apiProvider = KeyboardPreferences.ApiProvider.NVIDIA_MISTRAL
+                                            preferences.customBaseUrl = "https://integrate.api.nvidia.com/v1/"
+                                            customBaseUrl = "https://integrate.api.nvidia.com/v1/"
+                                            preferences.customModel = "mistralai/mistral-medium-3.5-128b"
+                                            customModel = "mistralai/mistral-medium-3.5-128b"
+                                            preferences.deepSeekApiKey = "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"
+                                            personalApiKey = "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"
+                                        },
+                                        label = { Text("Nvidia Mistral", fontSize = 12.sp) }
+                                    )
                                     ElevatedFilterChip(
                                         selected = apiProvider == KeyboardPreferences.ApiProvider.DEEPSEEK,
                                         onClick = {
@@ -440,17 +458,16 @@ fun SettingsScreen(
                                         onClick = {
                                             preferences.apiProvider = KeyboardPreferences.ApiProvider.OPENAI_COMPATIBLE
                                             apiProvider = KeyboardPreferences.ApiProvider.OPENAI_COMPATIBLE
-                                            // Set standard OpenAI default, but leave it editable
-                                            if (customBaseUrl == "https://api.deepseek.com/") {
+                                            if (customBaseUrl == "https://api.deepseek.com/" || customBaseUrl == "https://integrate.api.nvidia.com/v1/") {
                                                 preferences.customBaseUrl = "https://api.openai.com/v1/"
                                                 customBaseUrl = "https://api.openai.com/v1/"
                                             }
-                                            if (customModel == "deepseek-chat") {
+                                            if (customModel == "deepseek-chat" || customModel == "mistralai/mistral-medium-3.5-128b") {
                                                 preferences.customModel = "gpt-4o-mini"
                                                 customModel = "gpt-4o-mini"
                                             }
                                         },
-                                        label = { Text("Custom LLM (OpenAI style)", fontSize = 12.sp) }
+                                        label = { Text("Custom LLM (OpenAI)", fontSize = 12.sp) }
                                     )
                                 }
                                 
