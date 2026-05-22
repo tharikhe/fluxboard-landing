@@ -8,6 +8,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,6 +37,7 @@ import com.example.data.pref.KeyboardPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,15 +105,16 @@ fun SettingsScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
+                        Image(
+                            painter = painterResource(id = R.drawable.fluxboard_logo),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(6.dp))
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "Deep Keyboard Settings",
+                            "fluxBoard Settings",
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
                             fontFamily = FontFamily.SansSerif
@@ -131,6 +136,37 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.fluxboard_logo),
+                        contentDescription = "fluxBoard Logo",
+                        modifier = Modifier
+                            .size(140.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "fluxBoard",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 28.sp,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "TYPE SMART. FLOW FAST.",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 1.5.sp
+                    )
+                }
+            }
+
             // STEP 1 & 2: ONBOARDING ASSISTANT CARDS
             item {
                 Text(
@@ -166,14 +202,14 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = if (isEnabled && isSelected) "Deep Keyboard is Active!" else "Setup Required!",
+                                    text = if (isEnabled && isSelected) "fluxBoard is Active!" else "Setup Required!",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = if (isEnabled && isSelected) {
-                                        "Fully active writing companion. Open any app to start typing with DeepSeek AI."
+                                        "Fully active writing companion. Open any app to start typing with fluxBoard AI."
                                     } else {
                                         "Complete these two clicks to enable writing predictions and smart rephrasers."
                                     },
@@ -254,7 +290,7 @@ fun SettingsScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    "Deep Keyboard Premium",
+                                    "fluxBoard Premium",
                                     color = Color.White,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp
