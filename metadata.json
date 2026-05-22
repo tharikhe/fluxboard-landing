@@ -1,0 +1,6 @@
+{
+  "name": "Deep Keyboard",
+  "description": "Next-generation AI-powered writing assistant keyboard featuring DeepSeek intelligent rephrasing, tone correction, smart reply generators, and context aware productivity tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
